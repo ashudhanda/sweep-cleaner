@@ -1,7 +1,14 @@
 package com.sweep.cleaner.ui.screens.onboarding
 
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -12,9 +19,11 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.PieChart
 import androidx.compose.material.icons.filled.Shield
@@ -33,6 +42,9 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
@@ -41,6 +53,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.sweep.cleaner.ui.theme.BrandAmber
 import com.sweep.cleaner.ui.theme.BrandTeal
+import com.sweep.cleaner.ui.theme.BrandTealBright
 import com.sweep.cleaner.ui.theme.BrandTealMint
 
 data class OnboardingPageData(
@@ -187,26 +200,104 @@ fun OnboardingScreen(
                     }
                 }
 
-                Button(
-                    onClick = {
-                        if (isLastPage) {
-                            onFinished()
-                        } else {
-                            currentPage++
-                        }
-                    },
+                // Infinite Glowing Transition
+                val infiniteTransition = rememberInfiniteTransition(label = "button_glow")
+                val glowAlpha by infiniteTransition.animateFloat(
+                    initialValue = 0.45f,
+                    targetValue = 0.95f,
+                    animationSpec = infiniteRepeatable(
+                        animation = tween(1400, easing = FastOutSlowInEasing),
+                        repeatMode = RepeatMode.Reverse
+                    ),
+                    label = "glow_alpha"
+                )
+                val glowSpread by infiniteTransition.animateFloat(
+                    initialValue = 0f,
+                    targetValue = 6f,
+                    animationSpec = infiniteRepeatable(
+                        animation = tween(1400, easing = FastOutSlowInEasing),
+                        repeatMode = RepeatMode.Reverse
+                    ),
+                    label = "glow_spread"
+                )
+
+                Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(56.dp)
-                        .testTag("onboarding_action_button"),
-                    shape = RoundedCornerShape(16.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = BrandTeal)
+                        .height(58.dp),
+                    contentAlignment = Alignment.Center
                 ) {
-                    Text(
-                        text = if (isLastPage) "Get Started with Sweep" else "Continue",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.SemiBold
+                    // Outer pulsating luminous glow aura
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(58.dp)
+                            .clip(RoundedCornerShape(18.dp))
+                            .background(
+                                Brush.horizontalGradient(
+                                    listOf(
+                                        BrandTealMint.copy(alpha = glowAlpha * 0.7f),
+                                        BrandTealBright.copy(alpha = glowAlpha * 0.9f),
+                                        BrandTealMint.copy(alpha = glowAlpha * 0.7f)
+                                    )
+                                )
+                            )
                     )
+
+                    // Foreground Glowing Action Button
+                    Button(
+                        onClick = {
+                            if (isLastPage) {
+                                onFinished()
+                            } else {
+                                currentPage++
+                            }
+                        },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(56.dp)
+                            .padding(horizontal = 2.dp)
+                            .border(
+                                width = 1.5.dp,
+                                brush = Brush.horizontalGradient(
+                                    listOf(
+                                        BrandTealMint.copy(alpha = 0.9f),
+                                        Color.White.copy(alpha = 0.8f),
+                                        BrandTealMint.copy(alpha = 0.9f)
+                                    )
+                                ),
+                                shape = RoundedCornerShape(18.dp)
+                            )
+                            .testTag("onboarding_action_button"),
+                        shape = RoundedCornerShape(18.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = BrandTeal,
+                            contentColor = Color.White
+                        ),
+                        elevation = ButtonDefaults.buttonElevation(
+                            defaultElevation = 6.dp,
+                            pressedElevation = 2.dp
+                        )
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.Center
+                        ) {
+                            Text(
+                                text = if (isLastPage) "Get Started with Sweep" else "Continue",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = Color.White
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Icon(
+                                imageVector = if (isLastPage) Icons.Default.AutoAwesome else Icons.AutoMirrored.Filled.ArrowForward,
+                                contentDescription = null,
+                                tint = BrandTealMint,
+                                modifier = Modifier.size(20.dp)
+                            )
+                        }
+                    }
                 }
             }
         }

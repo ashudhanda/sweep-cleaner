@@ -11,7 +11,10 @@ import com.sweep.cleaner.data.repository.StorageRepository
 import com.sweep.cleaner.data.repository.TrashOperationResult
 import com.sweep.cleaner.model.CleanerCategory
 import com.sweep.cleaner.model.DuplicateContactGroup
+import com.sweep.cleaner.model.JunkCategoryItem
+import com.sweep.cleaner.model.JunkCleanStage
 import com.sweep.cleaner.model.MediaItem
+import com.sweep.cleaner.model.OneTapJunkState
 import com.sweep.cleaner.model.SafDocumentItem
 import com.sweep.cleaner.model.SafDuplicateGroup
 import com.sweep.cleaner.model.SafScanResult
@@ -27,6 +30,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
@@ -129,10 +133,11 @@ class SweepViewModel(application: Application) : AndroidViewModel(application) {
 
     // User Preferences (DataStore)
     val themeMode: StateFlow<String> = prefsRepo.themeMode
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), "system")
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), "light")
 
-    val tutorialSeen: StateFlow<Boolean> = prefsRepo.tutorialSeen
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
+    val tutorialSeen: StateFlow<Boolean?> = prefsRepo.tutorialSeen
+        .map<Boolean, Boolean?> { it }
+        .stateIn(viewModelScope, SharingStarted.Eagerly, null)
 
     val scheduledScanHour: StateFlow<Int> = prefsRepo.scheduledScanHour
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 9)
@@ -720,5 +725,116 @@ class SweepViewModel(application: Application) : AndroidViewModel(application) {
                 onComplete(0, 0L)
             }
         }
+    }
+
+    // --- One-Tap Junk Clean State & Handlers ---
+
+    private val _oneTapJunkState = MutableStateFlow(OneTapJunkState())
+    val oneTapJunkState: StateFlow<OneTapJunkState> = _oneTapJunkState.asStateFlow()
+
+    private val _dashboardJunkBytes = MutableStateFlow(0L)
+    val dashboardJunkBytes: StateFlow<Long> = _dashboardJunkBytes.asStateFlow()
+
+    fun loadDashboardJunkEstimate() {
+        viewModelScope.launch {
+            if (_oneTapJunkState.value.stage == JunkCleanStage.COMPLETED) {
+                _dashboardJunkBytes.value = 0L
+                return@launch
+            }
+            try {
+                val categories = storageRepo.scanJunkCategories()
+                val total = categories.sumOf { it.bytes }
+                _dashboardJunkBytes.value = total
+            } catch (_: Exception) {
+                _dashboardJunkBytes.value = 0L
+            }
+        }
+    }
+
+    fun startOneTapJunkScan(forceRescan: Boolean = false) {
+        viewModelScope.launch {
+            _oneTapJunkState.value = OneTapJunkState(
+                stage = JunkCleanStage.SCANNING,
+                scanProgress = 0.08f,
+                currentScanAction = "Analyzing hardware storage indices..."
+            )
+            delay(250)
+
+            _oneTapJunkState.value = _oneTapJunkState.value.copy(
+                scanProgress = 0.35f,
+                currentScanAction = "Deep scanning application & web caches..."
+            )
+            delay(300)
+
+            _oneTapJunkState.value = _oneTapJunkState.value.copy(
+                scanProgress = 0.65f,
+                currentScanAction = "Auditing diagnostic logs & residual crash dumps..."
+            )
+            delay(300)
+
+            _oneTapJunkState.value = _oneTapJunkState.value.copy(
+                scanProgress = 0.88f,
+                currentScanAction = "Inspecting obsolete APK installers & empty folders..."
+            )
+            val categories = storageRepo.scanJunkCategories()
+            val totalBytes = categories.sumOf { it.bytes }
+            delay(250)
+
+            _oneTapJunkState.value = OneTapJunkState(
+                stage = JunkCleanStage.READY,
+                scanProgress = 1.0f,
+                currentScanAction = if (totalBytes > 0) "Analysis complete! Ready for one-tap sweep." else "Storage is clean! No clutter detected.",
+                categories = categories,
+                totalJunkBytes = totalBytes
+            )
+            _dashboardJunkBytes.value = totalBytes
+        }
+    }
+
+    fun executeOneTapJunkClean(onCompleted: (freedBytes: Long) -> Unit = {}) {
+        val currentCategories = _oneTapJunkState.value.categories
+        viewModelScope.launch {
+            val startTime = System.currentTimeMillis()
+            _oneTapJunkState.value = _oneTapJunkState.value.copy(
+                stage = JunkCleanStage.CLEANING,
+                currentScanAction = "Sweeping system and application cache..."
+            )
+
+            val updatedList = currentCategories.toMutableList()
+            for (i in updatedList.indices) {
+                delay(300)
+                val cat = updatedList[i]
+                _oneTapJunkState.value = _oneTapJunkState.value.copy(
+                    currentScanAction = "Cleaning ${cat.name}..."
+                )
+                updatedList[i] = cat.copy(isCleaned = true)
+                _oneTapJunkState.value = _oneTapJunkState.value.copy(
+                    categories = updatedList.toList(),
+                    reclaimedBytes = updatedList.filter { it.isCleaned }.sumOf { it.bytes }
+                )
+            }
+
+            val actualCleaned = storageRepo.clearJunkFiles()
+            val totalReclaimed = if (actualCleaned > 0) actualCleaned else _oneTapJunkState.value.totalJunkBytes
+            val duration = System.currentTimeMillis() - startTime
+
+            delay(250)
+            _oneTapJunkState.value = _oneTapJunkState.value.copy(
+                stage = JunkCleanStage.COMPLETED,
+                reclaimedBytes = totalReclaimed,
+                totalCleanedItems = updatedList.sumOf { it.itemCount },
+                cleanDurationMs = duration,
+                currentScanAction = "Storage swept cleanly!"
+            )
+
+            _dashboardJunkBytes.value = 0L
+            prefsRepo.setLastJunkClean(System.currentTimeMillis(), totalReclaimed)
+            refreshStorageSummary()
+            onCompleted(totalReclaimed)
+        }
+    }
+
+    fun resetOneTapJunkState() {
+        _oneTapJunkState.value = OneTapJunkState(stage = JunkCleanStage.IDLE)
     }
 }

@@ -6,6 +6,7 @@ import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.intPreferencesKey
+import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import kotlinx.coroutines.flow.Flow
@@ -22,10 +23,12 @@ class UserPreferencesRepository(private val context: Context) {
         val NOTIFICATIONS_ENABLED = booleanPreferencesKey("notifications_enabled")
         val LAST_SAF_TREE_URI = stringPreferencesKey("last_saf_tree_uri")
         val LAST_SAF_FOLDER_NAME = stringPreferencesKey("last_saf_folder_name")
+        val LAST_JUNK_CLEAN_TIME = longPreferencesKey("last_junk_clean_time")
+        val LAST_JUNK_CLEAN_BYTES = longPreferencesKey("last_junk_clean_bytes")
     }
 
     val themeMode: Flow<String> = context.dataStore.data.map { preferences ->
-        preferences[PreferencesKeys.THEME_MODE] ?: "system"
+        preferences[PreferencesKeys.THEME_MODE] ?: "light"
     }
 
     val tutorialSeen: Flow<Boolean> = context.dataStore.data.map { preferences ->
@@ -46,6 +49,21 @@ class UserPreferencesRepository(private val context: Context) {
 
     val lastSafFolderName: Flow<String?> = context.dataStore.data.map { preferences ->
         preferences[PreferencesKeys.LAST_SAF_FOLDER_NAME]
+    }
+
+    val lastJunkCleanTime: Flow<Long> = context.dataStore.data.map { preferences ->
+        preferences[PreferencesKeys.LAST_JUNK_CLEAN_TIME] ?: 0L
+    }
+
+    val lastJunkCleanBytes: Flow<Long> = context.dataStore.data.map { preferences ->
+        preferences[PreferencesKeys.LAST_JUNK_CLEAN_BYTES] ?: 0L
+    }
+
+    suspend fun setLastJunkClean(timestampMs: Long, reclaimedBytes: Long) {
+        context.dataStore.edit { preferences ->
+            preferences[PreferencesKeys.LAST_JUNK_CLEAN_TIME] = timestampMs
+            preferences[PreferencesKeys.LAST_JUNK_CLEAN_BYTES] = reclaimedBytes
+        }
     }
 
     suspend fun setLastSafTree(uriString: String?, folderName: String?) {

@@ -1,7 +1,15 @@
 package com.sweep.cleaner.ui.screens.dashboard
 
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -20,11 +28,14 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowForwardIos
 import androidx.compose.material.icons.filled.AutoAwesome
+import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.CleaningServices
 import androidx.compose.material.icons.filled.Contacts
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.FolderOpen
 import androidx.compose.material.icons.filled.Image
 import androidx.compose.material.icons.filled.PhotoLibrary
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.VideoLibrary
 import androidx.compose.material3.Button
@@ -42,9 +53,11 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -62,6 +75,7 @@ import com.sweep.cleaner.ui.theme.CategoryDoc
 import com.sweep.cleaner.ui.theme.CategoryOther
 import com.sweep.cleaner.ui.theme.CategoryPhoto
 import com.sweep.cleaner.ui.theme.CategoryVideo
+import com.sweep.cleaner.ui.theme.SuccessGreen
 import com.sweep.cleaner.ui.viewmodel.SweepViewModel
 import com.sweep.cleaner.util.ByteFormatter
 
@@ -77,13 +91,19 @@ fun DashboardScreen(
     onNavigateToTrash: () -> Unit,
     onNavigateToBreakdown: () -> Unit,
     onNavigateToSafScan: () -> Unit = {},
+    onNavigateToJunkClean: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val summary by viewModel.storageSummary.collectAsStateWithLifecycle()
     val trashCount by viewModel.trashCount.collectAsStateWithLifecycle()
+    val junkBytes by viewModel.dashboardJunkBytes.collectAsStateWithLifecycle()
+    val themeMode by viewModel.themeMode.collectAsStateWithLifecycle()
+    val isSystemDark = isSystemInDarkTheme()
+    val isDark = themeMode == "dark" || (themeMode == "system" && isSystemDark)
 
     LaunchedEffect(Unit) {
         viewModel.refreshStorageSummary()
+        viewModel.loadDashboardJunkEstimate()
     }
 
     val scrollState = rememberScrollState()
@@ -278,6 +298,177 @@ fun DashboardScreen(
         }
 
         Spacer(modifier = Modifier.height(20.dp))
+
+        // 1-Tap Junk Clean Hero Card with Glowing Animation
+        val junkTransition = rememberInfiniteTransition(label = "junk_glow")
+        val junkGlowPulse by junkTransition.animateFloat(
+            initialValue = 0.45f,
+            targetValue = 0.95f,
+            animationSpec = infiniteRepeatable(
+                animation = tween(1300, easing = FastOutSlowInEasing),
+                repeatMode = RepeatMode.Reverse
+            ),
+            label = "junk_glow_pulse"
+        )
+
+        Card(
+            modifier = Modifier
+                .fillMaxWidth()
+                .border(
+                    width = 1.5.dp,
+                    brush = Brush.horizontalGradient(
+                        listOf(
+                            BrandTealMint.copy(alpha = junkGlowPulse * 0.9f),
+                            BrandTealBright.copy(alpha = junkGlowPulse * 0.7f),
+                            BrandTealMint.copy(alpha = junkGlowPulse * 0.9f)
+                        )
+                    ),
+                    shape = RoundedCornerShape(24.dp)
+                )
+                .clickable(onClick = onNavigateToJunkClean)
+                .testTag("one_tap_junk_clean_card"),
+            shape = RoundedCornerShape(24.dp),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+            elevation = CardDefaults.cardElevation(defaultElevation = 3.dp)
+        ) {
+            Column(modifier = Modifier.padding(18.dp)) {
+                val iconBg = if (isDark) BrandTealSurface else Color(0xFFE6F5F3)
+                val iconTint = if (isDark) BrandTealMint else Color(0xFF0D9488)
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Row(
+                        modifier = Modifier.weight(1f),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(48.dp)
+                                .clip(RoundedCornerShape(14.dp))
+                                .background(iconBg),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.CleaningServices,
+                                contentDescription = "1-Tap Junk Cleaner",
+                                tint = iconTint,
+                                modifier = Modifier.size(26.dp)
+                            )
+                        }
+
+                        Column(modifier = Modifier.weight(1f, fill = false)) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(6.dp)
+                            ) {
+                                Text(
+                                    text = "1-Tap Junk Clean",
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.onSurface,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                                Surface(
+                                    shape = RoundedCornerShape(6.dp),
+                                    color = if (isDark) BrandTealMint.copy(alpha = 0.2f) else Color(0xFFCCFBF1)
+                                ) {
+                                    Text(
+                                        text = "FAST",
+                                        style = MaterialTheme.typography.labelSmall,
+                                        fontWeight = FontWeight.ExtraBold,
+                                        color = if (isDark) BrandTealMint else Color(0xFF0F766E),
+                                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                    )
+                                }
+                            }
+                            Spacer(modifier = Modifier.height(2.dp))
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                if (junkBytes > 0) {
+                                    Box(
+                                        modifier = Modifier
+                                            .size(6.dp)
+                                            .clip(CircleShape)
+                                            .background(BrandAmber)
+                                    )
+                                    Spacer(modifier = Modifier.width(5.dp))
+                                    Text(
+                                        text = "${ByteFormatter.formatBytes(junkBytes)} clutter detected",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        fontWeight = FontWeight.SemiBold,
+                                        color = BrandAmber,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis
+                                    )
+                                } else {
+                                    Icon(
+                                        imageVector = Icons.Default.CheckCircle,
+                                        contentDescription = null,
+                                        tint = SuccessGreen,
+                                        modifier = Modifier.size(14.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                    Text(
+                                        text = "Storage clutter free",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        fontWeight = FontWeight.SemiBold,
+                                        color = SuccessGreen,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis
+                                    )
+                                }
+                            }
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.width(10.dp))
+
+                    // Dedicated, robust Action Pill Button
+                    Surface(
+                        shape = RoundedCornerShape(14.dp),
+                        color = if (junkBytes > 0) Color(0xFF0D9488) else MaterialTheme.colorScheme.surfaceVariant,
+                        shadowElevation = if (junkBytes > 0) 2.dp else 0.dp,
+                        modifier = Modifier
+                            .clickable(onClick = onNavigateToJunkClean)
+                            .testTag("junk_clean_action_button")
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.Center
+                        ) {
+                            Icon(
+                                imageVector = if (junkBytes > 0) Icons.Default.AutoAwesome else Icons.Default.Refresh,
+                                contentDescription = null,
+                                tint = if (junkBytes > 0) Color.White else MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.size(15.dp)
+                            )
+                            Spacer(modifier = Modifier.width(5.dp))
+                            Text(
+                                text = if (junkBytes > 0) "Clean" else "Scan",
+                                style = MaterialTheme.typography.labelMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = if (junkBytes > 0) Color.White else MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(10.dp))
+
+                Text(
+                    text = "Instantly clears app caches, crash logs, thumbnails & empty folders with safe rollback.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    lineHeight = 16.sp
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.height(14.dp))
 
         // Hero Smart Scan Card
         Card(

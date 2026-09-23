@@ -59,10 +59,12 @@ class MainActivity : ComponentActivity() {
 
             SweepTheme(themeMode = themeMode) {
                 Surface(modifier = Modifier.fillMaxSize()) {
-                    SweepAppNavigation(
-                        viewModel = viewModel,
-                        tutorialSeen = tutorialSeen
-                    )
+                    if (tutorialSeen != null) {
+                        SweepAppNavigation(
+                            viewModel = viewModel,
+                            tutorialSeen = tutorialSeen == true
+                        )
+                    }
                 }
             }
         }

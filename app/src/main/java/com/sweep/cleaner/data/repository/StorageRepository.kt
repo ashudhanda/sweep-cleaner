@@ -221,7 +221,7 @@ class StorageRepository(private val context: Context) {
     }
 
     suspend fun getSimilarPhotoGroups(): List<SimilarPhotoGroup> = withContext(Dispatchers.IO) {
-        val photos = getPhotos().take(100) // Process latest 100 photos for rapid responsiveness
+        val photos = getPhotos().take(250) // Process latest 250 photos for broader duplicate/burst coverage
         val hashedPhotos = mutableListOf<Pair<MediaItem, Long>>()
 
         for (photo in photos) {
@@ -849,16 +849,20 @@ class StorageRepository(private val context: Context) {
     }
 
     private fun loadThumbnail(uri: Uri, width: Int, height: Int): Bitmap? {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            try {
+                val thumb = contentResolver.loadThumbnail(uri, Size(width, height), null)
+                if (thumb != null) return thumb
+            } catch (_: Exception) {
+                // Fallback to openInputStream
+            }
+        }
         return try {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                contentResolver.loadThumbnail(uri, Size(width, height), null)
-            } else {
-                contentResolver.openInputStream(uri)?.use { stream ->
-                    val options = BitmapFactory.Options().apply {
-                        inSampleSize = 8
-                    }
-                    BitmapFactory.decodeStream(stream, null, options)
+            contentResolver.openInputStream(uri)?.use { stream ->
+                val options = BitmapFactory.Options().apply {
+                    inSampleSize = 8
                 }
+                BitmapFactory.decodeStream(stream, null, options)
             }
         } catch (_: Exception) {
             null
@@ -902,5 +906,215 @@ class StorageRepository(private val context: Context) {
             )
         }
         return items
+    }
+
+    suspend fun scanJunkCategories(): List<com.sweep.cleaner.model.JunkCategoryItem> = withContext(Dispatchers.IO) {
+        val categories = mutableListOf<com.sweep.cleaner.model.JunkCategoryItem>()
+
+        // 1. Real App & System Cache
+        var cacheBytes = getDirectorySize(context.cacheDir)
+        context.externalCacheDirs?.forEach { dir ->
+            if (dir != null) cacheBytes += getDirectorySize(dir)
+        }
+        context.codeCacheDir?.let { cacheBytes += getDirectorySize(it) }
+
+        var cacheCount = (context.cacheDir.listFiles()?.size ?: 0)
+        context.externalCacheDirs?.forEach { dir ->
+            if (dir != null) cacheCount += (dir.listFiles()?.size ?: 0)
+        }
+
+        categories.add(
+            com.sweep.cleaner.model.JunkCategoryItem(
+                id = "app_cache",
+                name = "App & System Cache",
+                description = "Temporary application run caches and web view data",
+                bytes = cacheBytes,
+                itemCount = cacheCount,
+                iconType = "cache"
+            )
+        )
+
+        // 2. Real Temporary Files & Logs on Device
+        val (tempBytes, tempCount) = scanRealTempAndLogs()
+        categories.add(
+            com.sweep.cleaner.model.JunkCategoryItem(
+                id = "temp_logs",
+                name = "Temporary Logs & Diagnostics",
+                description = "Crash reports, diagnostic logs, and incomplete downloads",
+                bytes = tempBytes,
+                itemCount = tempCount,
+                iconType = "logs"
+            )
+        )
+
+        // 3. Real Obsolete APK Packages
+        val apkList = try { getApkFiles() } catch (_: Exception) { emptyList() }
+        val apkBytes = apkList.sumOf { it.sizeBytes }
+        categories.add(
+            com.sweep.cleaner.model.JunkCategoryItem(
+                id = "apk_installers",
+                name = "Obsolete APK Installers",
+                description = "Package installation files left in storage",
+                bytes = apkBytes,
+                itemCount = apkList.size,
+                iconType = "apk"
+            )
+        )
+
+        // 4. Real Thumbnail & Preview Cache
+        val thumbDir = java.io.File(context.cacheDir, "image_cache")
+        val thumbBytes = getDirectorySize(thumbDir)
+        val thumbCount = thumbDir.listFiles()?.size ?: 0
+        categories.add(
+            com.sweep.cleaner.model.JunkCategoryItem(
+                id = "thumbnail_cache",
+                name = "Image & Media Thumbnail Cache",
+                description = "Cached preview images and decoded video frames",
+                bytes = thumbBytes,
+                itemCount = thumbCount,
+                iconType = "thumbnail"
+            )
+        )
+
+        // 5. Real Empty Folders in Storage
+        val emptyFolderCount = scanRealEmptyFolders()
+        categories.add(
+            com.sweep.cleaner.model.JunkCategoryItem(
+                id = "empty_folders",
+                name = "Empty Residual Folders",
+                description = "Unused empty directories left after app uninstalls",
+                bytes = 0L,
+                itemCount = emptyFolderCount,
+                iconType = "folder"
+            )
+        )
+
+        categories
+    }
+
+    private fun scanRealTempAndLogs(): Pair<Long, Int> {
+        var bytes = 0L
+        var count = 0
+
+        // App internal temp & logs
+        val internalTemp = java.io.File(context.filesDir, "temp")
+        val internalLogs = java.io.File(context.filesDir, "logs")
+        if (internalTemp.exists()) {
+            bytes += getDirectorySize(internalTemp)
+            count += internalTemp.listFiles()?.size ?: 0
+        }
+        if (internalLogs.exists()) {
+            bytes += getDirectorySize(internalLogs)
+            count += internalLogs.listFiles()?.size ?: 0
+        }
+
+        // Device MediaStore temporary files (.tmp, .temp, .log, .crdownload, .part)
+        try {
+            val projection = arrayOf(MediaStore.Files.FileColumns.SIZE)
+            val selection = "${MediaStore.Files.FileColumns.DISPLAY_NAME} LIKE ? OR " +
+                    "${MediaStore.Files.FileColumns.DISPLAY_NAME} LIKE ? OR " +
+                    "${MediaStore.Files.FileColumns.DISPLAY_NAME} LIKE ? OR " +
+                    "${MediaStore.Files.FileColumns.DISPLAY_NAME} LIKE ? OR " +
+                    "${MediaStore.Files.FileColumns.DISPLAY_NAME} LIKE ?"
+            val args = arrayOf("%.tmp", "%.temp", "%.log", "%.crdownload", "%.part")
+
+            val uri = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                MediaStore.Files.getContentUri(MediaStore.VOLUME_EXTERNAL)
+            } else {
+                MediaStore.Files.getContentUri("external")
+            }
+            contentResolver.query(uri, projection, selection, args, null)?.use { cursor ->
+                val sizeCol = cursor.getColumnIndexOrThrow(MediaStore.Files.FileColumns.SIZE)
+                while (cursor.moveToNext()) {
+                    val size = cursor.getLong(sizeCol)
+                    if (size > 0) {
+                        bytes += size
+                        count++
+                    }
+                }
+            }
+        } catch (_: Exception) {}
+
+        return Pair(bytes, count)
+    }
+
+    private fun scanRealEmptyFolders(): Int {
+        var emptyCount = 0
+        try {
+            val externalDirs = context.getExternalFilesDirs(null)
+            externalDirs?.forEach { dir ->
+                dir?.parentFile?.listFiles()?.forEach { file ->
+                    if (file.isDirectory && file.listFiles()?.isEmpty() == true) {
+                        emptyCount++
+                    }
+                }
+            }
+        } catch (_: Exception) {}
+        return emptyCount
+    }
+
+    private fun getDirectorySize(dir: java.io.File?): Long {
+        if (dir == null || !dir.exists()) return 0L
+        var size = 0L
+        try {
+            dir.listFiles()?.forEach { file ->
+                size += if (file.isDirectory) getDirectorySize(file) else file.length()
+            }
+        } catch (_: Exception) {}
+        return size
+    }
+
+    suspend fun clearJunkFiles(): Long = withContext(Dispatchers.IO) {
+        var reclaimed = 0L
+        try {
+            // Clear internal cache
+            reclaimed += getDirectorySize(context.cacheDir)
+            context.cacheDir.listFiles()?.forEach { it.deleteRecursively() }
+
+            // Clear external caches
+            context.externalCacheDirs?.forEach { ext ->
+                if (ext != null) {
+                    reclaimed += getDirectorySize(ext)
+                    ext.listFiles()?.forEach { it.deleteRecursively() }
+                }
+            }
+
+            // Clear code cache
+            context.codeCacheDir?.let { codeDir ->
+                reclaimed += getDirectorySize(codeDir)
+                codeDir.listFiles()?.forEach { it.deleteRecursively() }
+            }
+
+            // Clear Coil image loader cache
+            try {
+                coil.Coil.imageLoader(context).diskCache?.clear()
+                coil.Coil.imageLoader(context).memoryCache?.clear()
+            } catch (_: Exception) {}
+
+            // Clear app temp & log dirs
+            val tempDir = java.io.File(context.filesDir, "temp")
+            if (tempDir.exists()) {
+                reclaimed += getDirectorySize(tempDir)
+                tempDir.deleteRecursively()
+            }
+            val logDir = java.io.File(context.filesDir, "logs")
+            if (logDir.exists()) {
+                reclaimed += getDirectorySize(logDir)
+                logDir.deleteRecursively()
+            }
+
+            // Remove empty directories in app-accessible areas
+            try {
+                context.getExternalFilesDirs(null)?.forEach { dir ->
+                    dir?.parentFile?.listFiles()?.forEach { file ->
+                        if (file.isDirectory && file.listFiles()?.isEmpty() == true) {
+                            file.delete()
+                        }
+                    }
+                }
+            } catch (_: Exception) {}
+        } catch (_: Exception) {}
+
+        reclaimed
     }
 }

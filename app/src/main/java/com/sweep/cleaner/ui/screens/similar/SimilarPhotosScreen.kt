@@ -154,6 +154,14 @@ fun SimilarPhotosScreen(
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.padding(top = 8.dp)
                     )
+                    Spacer(modifier = Modifier.height(20.dp))
+                    Button(
+                        onClick = { viewModel.loadSimilarPhotos() },
+                        colors = ButtonDefaults.buttonColors(containerColor = BrandTeal),
+                        shape = RoundedCornerShape(12.dp)
+                    ) {
+                        Text("Rescan Photos")
+                    }
                 }
             }
         } else {

@@ -57,6 +57,7 @@ import coil.compose.AsyncImage
 import com.sweep.cleaner.model.MediaItem
 import com.sweep.cleaner.ui.components.SafeDeleteConfirmDialog
 import com.sweep.cleaner.ui.components.SweepTopBar
+import com.sweep.cleaner.ui.components.VideoThumbnailView
 import com.sweep.cleaner.ui.theme.BrandAmber
 import com.sweep.cleaner.ui.theme.BrandAmberLight
 import com.sweep.cleaner.ui.theme.BrandTeal
@@ -302,19 +303,10 @@ fun VideoItemCard(
                         .clip(RoundedCornerShape(12.dp))
                         .background(MaterialTheme.colorScheme.surfaceVariant)
                 ) {
-                    AsyncImage(
-                        model = video.uri,
+                    VideoThumbnailView(
+                        uri = video.uri,
                         contentDescription = video.displayName,
-                        contentScale = ContentScale.Crop,
                         modifier = Modifier.fillMaxSize()
-                    )
-                    Icon(
-                        imageVector = Icons.Default.PlayArrow,
-                        contentDescription = null,
-                        tint = Color.White,
-                        modifier = Modifier
-                            .align(Alignment.Center)
-                            .size(24.dp)
                     )
                     if (video.durationMs > 0) {
                         Surface(

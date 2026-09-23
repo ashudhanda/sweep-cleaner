@@ -6,10 +6,11 @@ import java.util.UUID
 
 object SimilarPhotoDetector {
 
-    const val DEFAULT_HAMMING_THRESHOLD = 10
+    const val DEFAULT_HAMMING_THRESHOLD = 12
 
     /**
-     * Clusters hashed photos into groups with Hamming distance <= [maxHammingDistance].
+     * Clusters hashed photos into groups with Hamming distance <= [maxHammingDistance]
+     * or captured within 20 seconds (burst shots) with near hash.
      * Discards groups with fewer than 2 items.
      * Determines best shot based on highest resolution (width * height), then newest capture date.
      */
@@ -24,18 +25,22 @@ object SimilarPhotoDetector {
             if (visited[i]) continue
 
             val cluster = mutableListOf<MediaItem>()
-            cluster.add(hashedPhotos[i].first)
+            val (baseItem, baseHash) = hashedPhotos[i]
+            cluster.add(baseItem)
             visited[i] = true
-
-            val baseHash = hashedPhotos[i].second
 
             for (j in i + 1 until hashedPhotos.size) {
                 if (visited[j]) continue
-                val targetHash = hashedPhotos[j].second
+                val (targetItem, targetHash) = hashedPhotos[j]
                 val dist = ImageHasher.hammingDistance(baseHash, targetHash)
-                if (dist <= maxHammingDistance) {
+
+                val timeDiffSec = kotlin.math.abs(baseItem.dateModifiedMs - targetItem.dateModifiedMs) / 1000
+                val isBurst = timeDiffSec in 0..25 && dist <= 16
+                val isVisuallySimilar = dist <= maxHammingDistance
+
+                if (isVisuallySimilar || isBurst) {
                     visited[j] = true
-                    cluster.add(hashedPhotos[j].first)
+                    cluster.add(targetItem)
                 }
             }
 

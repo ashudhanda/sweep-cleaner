@@ -49,13 +49,13 @@ private val LightColorScheme = lightColorScheme(
 
 @Composable
 fun SweepTheme(
-    themeMode: String = "system",
+    themeMode: String = "light",
     content: @Composable () -> Unit
 ) {
     val darkTheme = when (themeMode) {
-        "light" -> false
         "dark" -> true
-        else -> isSystemInDarkTheme()
+        "system" -> false
+        else -> false
     }
 
     val colorScheme = if (darkTheme) DarkColorScheme else LightColorScheme

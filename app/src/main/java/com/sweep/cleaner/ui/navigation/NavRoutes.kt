@@ -23,4 +23,5 @@ object NavRoutes {
     const val PHOTOS_TAB = "photos_tab"
     const val VIDEOS_TAB = "videos_tab"
     const val SAF_SCAN = "saf_scan"
+    const val JUNK_CLEAN = "junk_clean"
 }

@@ -13,7 +13,9 @@ import androidx.compose.material.icons.filled.PhotoLibrary
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
@@ -34,6 +36,22 @@ fun PhotosTabScreen(
     modifier: Modifier = Modifier
 ) {
     val summary by viewModel.storageSummary.collectAsStateWithLifecycle()
+    val similarGroups by viewModel.similarPhotoGroups.collectAsStateWithLifecycle()
+    val screenshots by viewModel.screenshots.collectAsStateWithLifecycle()
+
+    LaunchedEffect(Unit) {
+        viewModel.loadScreenshots()
+        if (similarGroups.isEmpty()) {
+            viewModel.loadSimilarPhotos()
+        }
+    }
+
+    val similarBytes = remember(similarGroups) {
+        similarGroups.flatMap { g -> g.items.filter { it.id != g.bestShotId } }.sumOf { it.sizeBytes }
+    }
+    val screenshotsBytes = remember(screenshots) {
+        screenshots.sumOf { it.sizeBytes }
+    }
 
     Column(
         modifier = modifier
@@ -60,8 +78,8 @@ fun PhotosTabScreen(
 
             QuickCleanCard(
                 title = "Similar Photos",
-                subtitle = "Detect bursts and duplicate shots via visual hashing",
-                sizeBytes = summary.photoBytes / 4,
+                subtitle = if (similarGroups.isNotEmpty()) "${similarGroups.size} duplicate groups found" else "Detect bursts and duplicate shots via visual hashing",
+                sizeBytes = similarBytes,
                 icon = Icons.Default.PhotoLibrary,
                 iconTint = BrandTealBright,
                 iconBackground = MaterialTheme.colorScheme.surfaceVariant,
@@ -70,8 +88,8 @@ fun PhotosTabScreen(
 
             QuickCleanCard(
                 title = "Screenshots",
-                subtitle = "Review and clean captured screens",
-                sizeBytes = 0L,
+                subtitle = if (screenshots.isNotEmpty()) "${screenshots.size} screenshots found" else "Review and clean captured screens",
+                sizeBytes = screenshotsBytes,
                 icon = Icons.Default.Image,
                 iconTint = CategoryPhoto,
                 iconBackground = MaterialTheme.colorScheme.surfaceVariant,

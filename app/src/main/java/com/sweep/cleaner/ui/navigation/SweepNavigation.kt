@@ -34,6 +34,7 @@ import com.sweep.cleaner.ui.screens.dashboard.DashboardScreen
 import com.sweep.cleaner.ui.screens.documents.DocumentsScreen
 import com.sweep.cleaner.ui.screens.downloads.OldDownloadsScreen
 import com.sweep.cleaner.ui.screens.health.StorageHealthScreen
+import com.sweep.cleaner.ui.screens.junk.OneTapJunkCleanScreen
 import com.sweep.cleaner.ui.screens.leftovers.AppLeftoversScreen
 import com.sweep.cleaner.ui.screens.onboarding.OnboardingScreen
 import com.sweep.cleaner.ui.screens.photos.PhotosTabScreen
@@ -142,7 +143,8 @@ fun SweepAppNavigation(
                     onNavigateToSettings = { navController.navigate(NavRoutes.SETTINGS) },
                     onNavigateToTrash = { navController.navigate(NavRoutes.RECENTLY_DELETED) },
                     onNavigateToBreakdown = { navController.navigate(NavRoutes.STORAGE_BREAKDOWN) },
-                    onNavigateToSafScan = { navController.navigate(NavRoutes.SAF_SCAN) }
+                    onNavigateToSafScan = { navController.navigate(NavRoutes.SAF_SCAN) },
+                    onNavigateToJunkClean = { navController.navigate(NavRoutes.JUNK_CLEAN) }
                 )
             }
 
@@ -285,6 +287,13 @@ fun SweepAppNavigation(
 
             composable(NavRoutes.SAF_SCAN) {
                 SafStorageScanScreen(
+                    viewModel = viewModel,
+                    onBackClick = { navController.popBackStack() }
+                )
+            }
+
+            composable(NavRoutes.JUNK_CLEAN) {
+                OneTapJunkCleanScreen(
                     viewModel = viewModel,
                     onBackClick = { navController.popBackStack() }
                 )
