@@ -1,0 +1,7 @@
+<resources>
+    <string name="app_name">Sweep</string>
+    <string name="tagline">Safe Storage Cleanup for Android</string>
+    <string name="storage_overview">Storage Overview</string>
+    <string name="smart_scan">Smart Scan</string>
+    <string name="review_before_cleaning">Review before cleaning</string>
+</resources>

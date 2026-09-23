@@ -1,0 +1,6 @@
+{
+  "name": "Sweep",
+  "description": "Safe, private, offline-first storage cleanup for Android with 30-day trash recovery and review before delete.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

@@ -1,0 +1,123 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:aapt="http://schemas.android.com/aapt"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+
+    <!-- Subtle glow behind the broom head and sparkles -->
+    <path
+        android:pathData="M 54,54 m -24,0 a 24,24 0 1,0 48,0 a 24,24 0 1,0 -48,0">
+        <aapt:attr name="android:fillColor">
+            <gradient
+                android:centerX="56"
+                android:centerY="52"
+                android:gradientRadius="24"
+                android:type="radial">
+                <item android:color="#262DD4BF" android:offset="0.0" />
+                <item android:color="#002DD4BF" android:offset="1.0" />
+            </gradient>
+        </aapt:attr>
+    </path>
+
+    <!-- Sweeping curved motion trail (mint teal to glowing white) -->
+    <path
+        android:strokeWidth="4"
+        android:strokeLineCap="round"
+        android:fillColor="#00000000"
+        android:pathData="M 33,68 C 41,74 53,74 65,66 C 73,59 77,50 80,41">
+        <aapt:attr name="android:strokeColor">
+            <gradient
+                android:startX="33"
+                android:startY="74"
+                android:endX="80"
+                android:endY="41"
+                android:type="linear">
+                <item android:color="#002DD4BF" android:offset="0.0" />
+                <item android:color="#2DD4BF" android:offset="0.6" />
+                <item android:color="#FFFFFF" android:offset="1.0" />
+            </gradient>
+        </aapt:attr>
+    </path>
+
+    <!-- Secondary outer clean wave -->
+    <path
+        android:strokeWidth="2"
+        android:strokeLineCap="round"
+        android:fillColor="#00000000"
+        android:pathData="M 28,62 C 34,70 46,75 58,74">
+        <aapt:attr name="android:strokeColor">
+            <gradient
+                android:startX="28"
+                android:startY="62"
+                android:endX="58"
+                android:endY="74"
+                android:type="linear">
+                <item android:color="#0014B8A6" android:offset="0.0" />
+                <item android:color="#4D14B8A6" android:offset="1.0" />
+            </gradient>
+        </aapt:attr>
+    </path>
+
+    <!-- Broom / Sweeper handle (modern sleek stylus angle) -->
+    <path
+        android:fillColor="#E2E8F0"
+        android:pathData="M 40,36 L 44,32 L 64,52 L 60,56 Z" />
+
+    <!-- Handle accent grip -->
+    <path
+        android:fillColor="#94A3B8"
+        android:pathData="M 41,35 L 47,29 L 50,32 L 44,38 Z" />
+
+    <!-- Broom bristle base / cap -->
+    <path
+        android:fillColor="#0F766E"
+        android:pathData="M 58,54 L 66,46 L 70,50 L 62,58 Z" />
+
+    <!-- Sweeper Bristles Head (Vibrant Teal Fan) -->
+    <path
+        android:pathData="M 62,56 C 66,52 70,48 74,47 C 77,53 76,61 68,69 C 64,68 62,63 62,56 Z">
+        <aapt:attr name="android:fillColor">
+            <gradient
+                android:startX="62"
+                android:startY="47"
+                android:endX="74"
+                android:endY="69"
+                android:type="linear">
+                <item android:color="#5EEAD4" android:offset="0.0" />
+                <item android:color="#14B8A6" android:offset="0.6" />
+                <item android:color="#0D9488" android:offset="1.0" />
+            </gradient>
+        </aapt:attr>
+    </path>
+
+    <!-- Bristle detail stripes -->
+    <path
+        android:strokeColor="#99FFFFFF"
+        android:strokeWidth="1.2"
+        android:strokeLineCap="round"
+        android:fillColor="#00000000"
+        android:pathData="M 65,54 L 71,62 M 68,51 L 74,58" />
+
+    <!-- Primary Four-Point Clean Sparkle (Teal-Mint) -->
+    <path
+        android:fillColor="#5EEAD4"
+        android:pathData="M 75,32 Q 75,37 70,37 Q 75,37 75,42 Q 75,37 80,37 Q 75,37 75,32 Z" />
+
+    <!-- Center diamond glint in primary sparkle -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M 75,35 L 77,37 L 75,39 L 73,37 Z" />
+
+    <!-- Secondary Warm Sparkle Star (Amber Clean Accent) -->
+    <path
+        android:fillColor="#FBBF24"
+        android:pathData="M 64,28 Q 64,31 61,31 Q 64,31 64,34 Q 64,31 67,31 Q 64,31 64,28 Z" />
+
+    <!-- Tertiary tiny glint -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M 82,47 Q 82,49 80,49 Q 82,49 82,51 Q 82,49 84,49 Q 82,49 82,47 Z" />
+
+</vector>

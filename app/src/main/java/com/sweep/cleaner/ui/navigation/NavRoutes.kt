@@ -1,0 +1,26 @@
+package com.sweep.cleaner.ui.navigation
+
+object NavRoutes {
+    const val ONBOARDING = "onboarding"
+    const val DASHBOARD = "dashboard"
+    const val SMART_SCAN = "smart_scan"
+    const val SIMILAR_PHOTOS = "similar_photos"
+    const val SCREENSHOTS = "screenshots"
+    const val LARGE_VIDEOS = "large_videos"
+    const val DOCUMENTS = "documents"
+    const val AUDIO = "audio"
+    const val APKS = "apks"
+    const val OLD_DOWNLOADS = "old_downloads"
+    const val CHAT_MEDIA = "chat_media"
+    const val DUPLICATE_CONTACTS = "duplicate_contacts"
+    const val APP_LEFTOVERS = "app_leftovers"
+    const val STORAGE_HEALTH = "storage_health"
+    const val UNUSED_APPS = "unused_apps"
+    const val RECENTLY_DELETED = "recently_deleted"
+    const val SETTINGS = "settings"
+    const val STORAGE_BREAKDOWN = "storage_breakdown"
+    const val TOOLS = "tools"
+    const val PHOTOS_TAB = "photos_tab"
+    const val VIDEOS_TAB = "videos_tab"
+    const val SAF_SCAN = "saf_scan"
+}
